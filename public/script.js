@@ -20,7 +20,19 @@ navigator.mediaDevices.getUserMedia({
 .then((stream)=>{
     // my_stream = stream
     display_my_video_stream(my_video , stream)
+
+    socket.on("userconnected", (userid) => {
+        connectToNewUser(userid, stream);
+    })
 })
+
+function connectToNewUser(userid, stream){
+    const call = peer.call(userid, stream)
+    const video = document.createElement("video")
+    call.on("stream", (userVideoStream) => {
+        display_my_video_stream(video, userVideoStream)
+    })
+}
 
 function display_my_video_stream(myVideo, stream){ 
     myVideo.srcObject = stream
@@ -46,6 +58,37 @@ $(function () {
         if ($("#chat_message").val().length !== 0) {
             socket.emit("message", $("#chat_message").val());
             $("#chat_message").val("");
+        }
+    })
+
+    $("#mute").click(function () {
+        const enabled = myStream.getAudioTracks()[0].enabled;
+        if (enabled) {
+            myStream.getAudioTracks()[0].enabled = false;
+            html = `<i class="fas fa-microphone-slash"></i>`;
+            $("#mute_button").toggleClass("background_red");
+            $("#mute_button").html(html)
+        } else {
+            myStream.getAudioTracks()[0].enabled = true;
+            html = `<i class="fas fa-microphone"></i>`;
+            $("#mute_button").toggleClass("background_red");
+            $("#mute_button").html(html)
+        }
+    })
+
+    
+    $("#stop_video").click(function () {
+        const enabled = myStream.getVideoTracks()[0].enabled;
+        if (enabled) {
+            myStream.getVideoTracks()[0].enabled = false;
+            html = `<i class="fas fa-video-slash"></i>`;
+            $("#stop_video").toggleClass("background_red");
+            $("#stop_video").html(html)
+        } else {
+            myStream.getVideoTracks()[0].enabled = true;
+            html = `<i class="fas fa-video"></i>`;
+            $("#stop_video").toggleClass("background_red");
+            $("#stop_video").html(html)
         }
     })
 
