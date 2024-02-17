@@ -8,39 +8,48 @@ var peer = new Peer(undefined, {
 
 const user = prompt("Enter your name");
 
-const my_video = document.createElement("video")
-my_video.muted = true
+const myVideo = document.createElement("video");
+myVideo.muted = true;
 
-// let my_stream
+let myStream;
 
-navigator.mediaDevices.getUserMedia({
-    audio: true,
-    video: true
-})
-.then((stream)=>{
-    // my_stream = stream
-    display_my_video_stream(my_video , stream)
-
-    socket.on("userconnected", (userid) => {
-        connectToNewUser(userid, stream);
+navigator.mediaDevices
+    .getUserMedia({
+        audio: true,
+        video: true,
     })
-})
+    .then((stream) => {
+        myStream = stream;
+        addVideoStream(myVideo, stream);
 
-function connectToNewUser(userid, stream){
-    const call = peer.call(userid, stream)
-    const video = document.createElement("video")
+        socket.on("user-connected", (userId) => {
+            connectToNewUser(userId, stream);
+        });
+
+        peer.on("call", (call) => {
+            call.answer(stream);
+            const video = document.createElement("video");
+            call.on("stream", (userVideoStream) => {
+                addVideoStream(video, userVideoStream);
+            });
+        });
+    })
+
+function connectToNewUser(userId, stream) {
+    const call = peer.call(userId, stream);
+    const video = document.createElement("video");
     call.on("stream", (userVideoStream) => {
-        display_my_video_stream(video, userVideoStream)
-    })
-}
+        addVideoStream(video, userVideoStream);
+    });
+};
 
-function display_my_video_stream(myVideo, stream){ 
-    myVideo.srcObject = stream
-    myVideo.addEventListener("loadedmetadata", () => {
-        myVideo.play()
-        $("#video_grid").append(myVideo)
-    })
-}
+function addVideoStream(video, stream) {
+    video.srcObject = stream;
+    video.addEventListener("loadedmetadata", () => {
+        video.play();
+        $("#video_grid").append(video)
+    });
+};
 
 $(function () {
     $("#show_chat").click(function () {
@@ -61,7 +70,14 @@ $(function () {
         }
     })
 
-    $("#mute").click(function () {
+    $("#chat_message").keydown(function (e) {
+        if (e.key == "Enter" && $("#chat_message").val().length !== 0) {
+            socket.emit("message", $("#chat_message").val());
+            $("#chat_message").val("");
+        }
+    })
+
+    $("#mute_button").click(function () {
         const enabled = myStream.getAudioTracks()[0].enabled;
         if (enabled) {
             myStream.getAudioTracks()[0].enabled = false;
@@ -76,7 +92,6 @@ $(function () {
         }
     })
 
-    
     $("#stop_video").click(function () {
         const enabled = myStream.getVideoTracks()[0].enabled;
         if (enabled) {
@@ -89,13 +104,6 @@ $(function () {
             html = `<i class="fas fa-video"></i>`;
             $("#stop_video").toggleClass("background_red");
             $("#stop_video").html(html)
-        }
-    })
-
-    $("#chat_message").keydown(function (e) {
-        if (e.key == "Enter" && $("#chat_message").val().length !== 0) {
-            socket.emit("message", $("#chat_message").val());
-            $("#chat_message").val("");
         }
     })
 
